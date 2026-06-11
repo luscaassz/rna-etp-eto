@@ -5,39 +5,11 @@ import rasterio
 from rasterio.transform import from_origin
 
 # TensorFlow / Keras
-from tensorflow.keras.models import load_model
+#from tensorflow.keras.models import load_model
 
 # QGIS
 #from qgis.core import QgsRasterLayer
 #from qgis.core import QgsProject
-
-
-# =========================================================
-# CARREGA MODELO
-# =========================================================
-def carregar_modelo(logger=None):
-
-    modelo_path = os.path.join(
-        os.path.dirname(__file__),
-        "modelo",
-        "modelo_etp.h5"
-    )
-
-    if not os.path.exists(modelo_path):
-
-        raise ValueError(
-            "Modelo .h5 não encontrado."
-        )
-
-    if logger:
-        logger("Carregando modelo RNA...")
-
-    modelo = load_model(modelo_path)
-
-    if logger:
-        logger("Modelo carregado.")
-
-    return modelo
 
 
 # =========================================================
@@ -221,9 +193,6 @@ def executar_modelo(
     logger=None
 ):
 
-    # =====================================================
-    # CAMINHOS
-    # =====================================================
     landsat_path = os.path.join(
         pasta_ano,
         "Landsat",
@@ -251,29 +220,20 @@ def executar_modelo(
         f"etp_eto_{ano}.tif"
     )
 
-    # =====================================================
-    # VALIDAR
-    # =====================================================
     if not os.path.exists(landsat_path):
-
         raise ValueError(
             "Raster Landsat não encontrado."
         )
 
     if not os.path.exists(mapbiomas_path):
-
         raise ValueError(
             "Raster MapBiomas não encontrado."
         )
 
-    # =====================================================
-    # MODELO
-    # =====================================================
-    modelo = carregar_modelo(logger)
+    # ======================================
+    # LEITURA DOS RASTERS
+    # ======================================
 
-    # =====================================================
-    # LER RASTERS
-    # =====================================================
     landsat_ds, landsat_data = ler_raster(
         landsat_path,
         logger
@@ -284,50 +244,27 @@ def executar_modelo(
         logger
     )
 
-    # =====================================================
-    # PREPARAR ENTRADAS
-    # =====================================================
-    X, linhas, colunas = preparar_entrada(
-        landsat_data,
-        mapbiomas_data,
-        logger
-    )
+    if logger:
+        logger("Gerando raster de teste...")
 
-    # =====================================================
-    # INFERÊNCIA
-    # =====================================================
-    y_pred = inferencia(
-        modelo,
-        X,
-        logger
-    )
+    # ======================================
+    # TESTE SIMPLES
+    # ======================================
 
-    # =====================================================
-    # REMONTAR IMAGEM
-    # =====================================================
-    resultado = y_pred.reshape(
-        linhas,
-        colunas
-    )
+    banda1 = landsat_data[0].astype(np.float32)
 
-    # =====================================================
-    # SALVAR RASTER
-    # =====================================================
+    resultado = banda1 / 10000.0
+
+    # ======================================
+    # SALVAR
+    # ======================================
+
     salvar_raster(
         output_raster,
         resultado,
         landsat_ds,
         logger
     )
-
-    # =====================================================
-    # ADICIONAR NO QGIS
-    # =====================================================
-    '''adicionar_no_qgis(
-        output_raster,
-        f"etp_eto_{ano}",
-        logger
-    )'''
 
     if logger:
         logger("Processamento finalizado.")

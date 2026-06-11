@@ -226,6 +226,12 @@ def baixar_landsat(
     image = (
         landsat
         .median()
+        .select([
+            "SR_B2",
+            "SR_B3",
+            "SR_B4",
+            "SR_B5"
+        ])
         .clip(ee_geom)
     )
 
