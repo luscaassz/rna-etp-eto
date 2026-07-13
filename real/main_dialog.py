@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (
     QFileDialog,
     QMessageBox,
     QVBoxLayout,
+    QApplication,
 )
 
 from ui.ui_rna_mpl import Ui_MainWindow
@@ -63,6 +64,7 @@ class MainDialog(QMainWindow):
             }
         """)
 
+        self.update_landsat_options()
         self.update_collect_button()
 
         self.log("Plugin iniciado.")
@@ -111,9 +113,18 @@ class MainDialog(QMainWindow):
 
         QComboBox {
             background-color: #31344a;
+            color: white;
             border: 1px solid #4c566a;
             border-radius: 6px;
             padding: 4px;
+        }
+
+        QComboBox QAbstractItemView {
+            background-color: #ffffff;
+            color: #000000;
+            selection-background-color: #4F46E5;
+            selection-color: #ffffff;
+            border: 1px solid #4c566a;
         }
 
         QPushButton {
@@ -196,6 +207,76 @@ class MainDialog(QMainWindow):
             self.run_model
         )
 
+        self.ui.spinBoxYearCollect.valueChanged.connect(
+            self.update_landsat_options
+        )
+
+    # =========================================================
+    # DISPONIBILIDADE LANDSAT POR ANO
+    # =========================================================
+    def get_available_landsat_collections(self, year):
+
+        available = []
+
+        # Landsat 5: operação aproximada até 2012/2013
+        if 1985 <= year <= 2012:
+            available.append("Landsat 5")
+
+        # Landsat 7: disponível a partir de 1999
+        if year >= 1999:
+            available.append("Landsat 7")
+
+        # Landsat 8: disponível a partir de 2013
+        if year >= 2013:
+            available.append("Landsat 8")
+
+        # Landsat 9: disponível a partir de 2021
+        if year >= 2021:
+            available.append("Landsat 9")
+
+        return available
+
+
+    def update_landsat_options(self):
+
+        year = int(
+            self.ui.spinBoxYearCollect.value()
+        )
+
+        current_collection = (
+            self.ui.comboBoxLandsat.currentText()
+        )
+
+        available = self.get_available_landsat_collections(
+            year
+        )
+
+        self.ui.comboBoxLandsat.blockSignals(True)
+
+        self.ui.comboBoxLandsat.clear()
+
+        self.ui.comboBoxLandsat.addItems(
+            available
+        )
+
+        if current_collection in available:
+
+            index = self.ui.comboBoxLandsat.findText(
+                current_collection
+            )
+
+            self.ui.comboBoxLandsat.setCurrentIndex(
+                index
+            )
+
+        elif available:
+
+            self.ui.comboBoxLandsat.setCurrentIndex(0)
+
+        self.ui.comboBoxLandsat.blockSignals(False)
+
+        self.update_collect_button()
+
     def update_collect_button(self):
 
         shp = self.ui.lineEditShape.text().strip()
@@ -204,6 +285,7 @@ class MainDialog(QMainWindow):
             shp
             and os.path.exists(shp)
             and self.ui.lineEditOutputFolder.text().strip()
+            and self.ui.comboBoxLandsat.count() > 0
         ):
 
             self.ui.pushButtonCollect.setEnabled(True)
@@ -383,7 +465,7 @@ class MainDialog(QMainWindow):
             self.log(f"Coleção: {collection}")
             self.log(f"Nuvem máxima: {cloud}%")
 
-            self.ui.progressBarCollect.setValue(10)
+            self.update_collect_progress(5)
 
             coletar_dados(
                 shp_path=shp_path,
@@ -392,9 +474,10 @@ class MainDialog(QMainWindow):
                 collection=collection,
                 cloud=cloud,
                 logger=self.log,
+                progress=self.update_collect_progress,
             )
 
-            self.ui.progressBarCollect.setValue(100)
+            self.update_collect_progress(100)
 
             self.log("Coleta finalizada com sucesso.")
 
@@ -468,15 +551,16 @@ class MainDialog(QMainWindow):
             self.log_run("===================================")
             self.log_run("Executando modelo RNA...")
 
-            self.ui.progressBarRun.setValue(20)
+            self.update_run_progress(5)
 
             raster_output = executar_modelo(
                 pasta_ano=year_folder,
                 ano=year,
                 logger=self.log_run,
+                progress=self.update_run_progress,
             )
 
-            self.ui.progressBarRun.setValue(100)
+            self.update_run_progress(100)
 
             self.log_run("Modelo executado com sucesso.")
             self.log_run("Raster gerado:")
@@ -498,3 +582,17 @@ class MainDialog(QMainWindow):
                 "Erro",
                 str(e)
             )
+    
+    # =========================================================
+    # PROGRESSO
+    # =========================================================
+    def update_collect_progress(self, value):
+
+        self.ui.progressBarCollect.setValue(value)
+        QApplication.processEvents()
+
+
+    def update_run_progress(self, value):
+
+        self.ui.progressBarRun.setValue(value)
+        QApplication.processEvents()
