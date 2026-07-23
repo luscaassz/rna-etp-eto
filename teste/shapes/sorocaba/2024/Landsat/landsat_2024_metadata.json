@@ -1,0 +1,23 @@
+{
+    "processed_for_model": true,
+    "year": 2024,
+    "collection": "Landsat 8",
+    "cloud_cover_threshold": 20.0,
+    "image_count": 20,
+    "bands_order": [
+        "b2",
+        "b3",
+        "b4",
+        "b5",
+        "b6",
+        "b7"
+    ],
+    "band_definitions": {
+        "b2": "SR_B2 reflectance, scaled with DN * 0.0000275 - 0.2",
+        "b3": "SR_B3 reflectance, scaled with DN * 0.0000275 - 0.2",
+        "b4": "SR_B4 reflectance, scaled with DN * 0.0000275 - 0.2",
+        "b5": "SR_B5 reflectance, scaled with DN * 0.0000275 - 0.2",
+        "b6": "Surface temperature in Celsius from ST_B6 or ST_B10",
+        "b7": "SR_B7 reflectance, scaled with DN * 0.0000275 - 0.2"
+    }
+}
