@@ -49,6 +49,15 @@ QGISPlugin_TesteApp/
 │   ├── scaler_y.pkl             # Normalizador da saída
 │   └── feature_columns.json     # Ordem correta das 25 features
 │
+├── shapes/
+|   └── sorocaba                 # Shape de exemplo
+|       ├── sorocaba.cpg            
+│       ├── sorocaba.dbf             
+│       ├── sorocaba.prj
+|       ├── sorocaba.qmd
+|       ├── sorocaba.shp              
+│       └── sorocaba.shx 
+|
 └── docs/
     └── images/                  # Imagens do README
 ```
@@ -134,7 +143,7 @@ Na aba **Coleta**, selecione:
 - a porcentagem máxima de nuvem;
 - a pasta de saída.
 
-![Placeholder da aba Coleta](docs/images/01-aba-coleta.svg)
+![Placeholder da aba Coleta](docs/images/01-aba-coleta.png)
 
 O shapefile deve ser uma área/polígono. Evite usar shapefile de ruas, linhas ou pontos.
 
@@ -146,8 +155,6 @@ sorocaba.shx
 sorocaba.dbf
 sorocaba.prj
 ```
-
-![Placeholder da seleção do Shapefile](docs/images/02-selecao-shapefile.svg)
 
 Depois da coleta, a pasta de saída ficará assim:
 
@@ -196,12 +203,12 @@ Depois da coleta, vá para a aba **Execução**.
 Selecione a pasta raiz onde os dados foram salvos, por exemplo:
 
 ```text
-C:/Users/lucas/Documentos/teste/sorocaba
+caminho/para/QGISPlugin/shapes/sorocaba
 ```
 
 Não selecione diretamente a pasta `2024`; selecione a pasta que contém a pasta `2024`.
 
-![Placeholder da aba Execução](docs/images/03-aba-execucao.svg)
+![Placeholder da aba Execução](docs/images/02-aba-execucao.png)
 
 Clique em **Rodar Modelo**.
 
@@ -210,8 +217,6 @@ O resultado será salvo em:
 ```text
 2024/Resultado/etp_eto_2024.tif
 ```
-
-![Placeholder do resultado no QGIS](docs/images/04-resultado-qgis.svg)
 
 ---
 
@@ -265,6 +270,8 @@ Para visualizar melhor o raster final:
 4. Escolha **Banda simples falsa-cor**.
 5. Clique em carregar valores mínimo/máximo.
 6. Escolha uma rampa de cor.
+
+![Placeholder do resultado no QGIS](docs/images/03-resultado-qgis.jpeg)
 
 Interpretação visual:
 
