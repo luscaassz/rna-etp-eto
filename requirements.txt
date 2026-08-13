@@ -1,0 +1,14 @@
+earthengine-api
+geemap
+PyQt5
+tensorflow
+scikit-learn
+joblib
+numpy
+pandas
+geopandas
+rasterio
+shapely
+pyproj
+fiona
+gdal
