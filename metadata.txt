@@ -1,11 +1,18 @@
 [general]
-name=RNA ETP/ETO
-description=Coleta dados Landsat/MapBiomas e estima evapotranspiracao anual com RNA.
+name=RNA ETP ETO
+description=Estima evapotranspiracao anual com Landsat, MapBiomas e RNA.
+about=Plugin PyQGIS para coletar dados Landsat/MapBiomas via Google Earth Engine e gerar raster anual de ETP/ETO com modelo de rede neural artificial. Requer conta Google Earth Engine, Project ID valido e dependencias Python externas: earthengine-api, geemap, tensorflow, scikit-learn, joblib, geopandas e rasterio.
 version=0.1.0
 qgisMinimumVersion=3.28
+qgisMaximumVersion=3.99
 author=Lucas
-email=
+email=lucas.v.souza@unesp.br
 category=Raster
+tags=evapotranspiracao,landsat,mapbiomas,earth engine,raster,rna
+homepage=https://github.com/luscaassz/rna-etp-eto
+repository=https://github.com/luscaassz/rna-etp-eto
+tracker=https://github.com/luscaassz/rna-etp-eto/issues
+license=GPL-2.0-or-later
 icon=
 experimental=True
 deprecated=False
