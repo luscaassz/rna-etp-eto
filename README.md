@@ -424,7 +424,6 @@ Refaca a coleta com a versao atual do plugin.
 - O modelo atual usa coordenadas `X` e `Y`; por isso, pode funcionar melhor em regioes parecidas com a regiao usada no treinamento.
 - A precipitacao ainda e usada como valor anual de referencia quando nao e informada manualmente.
 - O pos-processamento remove valores fisicamente impossiveis, como ET negativa.
-- Para resultados cientificos mais robustos, recomenda-se usar precipitacao real e validar a saida com dados independentes.
 
 
 
