@@ -15,7 +15,16 @@ from shapely.geometry import mapping
 # CONFIGURAÇÕES GERAIS
 # =========================================================
 
-EE_PROJECT = "qgis-493503"
+# Nao fixe um projeto pessoal no plugin publicado.
+# Por padrao, o Earth Engine usa as credenciais/projeto configurados
+# pelo proprio usuario. Se necessario, o usuario pode informar um projeto
+# pelas variaveis de ambiente abaixo.
+EE_PROJECT = None
+EE_PROJECT_ENV_VARS = (
+    "EARTHENGINE_PROJECT",
+    "GOOGLE_CLOUD_PROJECT",
+    "EE_PROJECT",
+)
 
 MAPBIOMAS_ASSET_ID = (
     "projects/mapbiomas-public/assets/brazil/lulc/collection10/"
@@ -47,15 +56,76 @@ def log_message(logger, message):
 # =========================================================
 # INICIALIZA EARTH ENGINE
 # =========================================================
-def initialize_ee(logger=None):
+def get_ee_project(project=None):
+    if project:
+        project = str(project).strip()
+        if project:
+            return project
+
+    if EE_PROJECT:
+        return str(EE_PROJECT).strip()
+
+    for env_var in EE_PROJECT_ENV_VARS:
+        value = os.environ.get(env_var)
+        if value:
+            value = value.strip()
+            if value:
+                return value
+
+    return None
+
+
+def _ee_initialize(project=None):
+    if project:
+        ee.Initialize(project=project)
+    else:
+        ee.Initialize()
+
+
+def initialize_ee(logger=None, project=None):
+    ee_project = get_ee_project(project)
+
     try:
-        ee.Initialize(project=EE_PROJECT)
-        log_message(logger, "Earth Engine inicializado.")
-    except Exception:
+        _ee_initialize(ee_project)
+        if ee_project:
+            log_message(
+                logger,
+                f"Earth Engine inicializado com o projeto: {ee_project}",
+            )
+        else:
+            log_message(
+                logger,
+                "Earth Engine inicializado com as credenciais do usuario.",
+            )
+    except Exception as init_error:
         log_message(logger, "Autenticando Earth Engine...")
-        ee.Authenticate()
-        ee.Initialize(project=EE_PROJECT)
-        log_message(logger, "Earth Engine autenticado.")
+        try:
+            ee.Authenticate(auth_mode="localhost")
+            _ee_initialize(ee_project)
+        except Exception as auth_error:
+            raise RuntimeError(
+                "Nao foi possivel autenticar/inicializar o Google Earth Engine.\n\n"
+                "Verifique se o usuario esta cadastrado no Earth Engine e se "
+                "a autenticacao foi feita no Python usado pelo QGIS.\n\n"
+                "Se sua conta exigir um projeto Google Cloud, defina uma das "
+                "variaveis de ambiente antes de abrir o QGIS:\n"
+                "- EARTHENGINE_PROJECT\n"
+                "- GOOGLE_CLOUD_PROJECT\n"
+                "- EE_PROJECT\n\n"
+                f"Erro inicial: {init_error}\n"
+                f"Erro apos autenticacao: {auth_error}"
+            )
+
+        if ee_project:
+            log_message(
+                logger,
+                f"Earth Engine autenticado com o projeto: {ee_project}",
+            )
+        else:
+            log_message(
+                logger,
+                "Earth Engine autenticado com as credenciais do usuario.",
+            )
 
 
 # =========================================================
@@ -584,11 +654,12 @@ def coletar_dados(
     cloud,
     logger=None,
     progress=None,
+    ee_project=None,
 ):
     set_progress(progress, 5)
 
     log_message(logger, "Inicializando Earth Engine...")
-    initialize_ee(logger)
+    initialize_ee(logger, project=ee_project)
 
     set_progress(progress, 15)
 

@@ -93,13 +93,34 @@ Na primeira execução, talvez seja necessário autenticar:
 earthengine authenticate
 ```
 
-O projeto usa o identificador de projeto configurado dentro de `coleta_gee.py`:
+O plugin nao usa mais um projeto fixo do Earth Engine. Cada usuario deve
+autenticar com a propria conta.
 
-```python
-EE_PROJECT = "qgis-493503"
+Dentro do plugin PyQGIS, use a aba **Coleta**:
+
+1. Informe o **Project ID** do Google Cloud/Earth Engine.
+2. Clique em **Autenticar Earth Engine**.
+3. Faça login no navegador quando solicitado.
+4. Volte ao QGIS e execute a coleta.
+
+O Project ID fica salvo nas configuracoes do QGIS para os proximos usos.
+
+Se a conta exigir um projeto Google Cloud/Earth Engine especifico, defina uma
+variavel de ambiente antes de abrir o QGIS:
+
+```bat
+setx EARTHENGINE_PROJECT seu-projeto-earth-engine
 ```
 
-Se for usar outro projeto do Google Earth Engine, altere esse valor no arquivo `coleta_gee.py`.
+Depois feche e abra o QGIS novamente.
+
+Tambem sao aceitas estas variaveis:
+
+```text
+EARTHENGINE_PROJECT
+GOOGLE_CLOUD_PROJECT
+EE_PROJECT
+```
 
 ---
 

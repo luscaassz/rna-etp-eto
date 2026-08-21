@@ -1,0 +1,11 @@
+[general]
+name=RNA ETP/ETO
+description=Coleta dados Landsat/MapBiomas e estima evapotranspiracao anual com RNA.
+version=0.1.0
+qgisMinimumVersion=3.28
+author=Lucas
+email=
+category=Raster
+icon=
+experimental=True
+deprecated=False

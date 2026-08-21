@@ -1,25 +1,133 @@
 import os
 
-from PyQt5.QtWidgets import (
-    QMainWindow,
-    QFileDialog,
-    QMessageBox,
-    QVBoxLayout,
-    QApplication,
-)
+try:
+    from qgis.PyQt.QtCore import QSettings, Qt
+    from qgis.PyQt.QtGui import QBrush, QColor
+    from qgis.PyQt.QtWidgets import (
+        QMainWindow,
+        QFileDialog,
+        QLabel,
+        QLineEdit,
+        QMessageBox,
+        QPushButton,
+        QStyledItemDelegate,
+        QStyle,
+        QVBoxLayout,
+        QApplication,
+    )
+except ImportError:
+    from PyQt5.QtCore import QSettings, Qt
+    from PyQt5.QtGui import QBrush, QColor
+    from PyQt5.QtWidgets import (
+        QMainWindow,
+        QFileDialog,
+        QLabel,
+        QLineEdit,
+        QMessageBox,
+        QPushButton,
+        QStyledItemDelegate,
+        QStyle,
+        QVBoxLayout,
+        QApplication,
+    )
 
-from ui.ui_rna_mpl import Ui_MainWindow
+try:
+    from qgis.core import QgsProject, QgsRasterLayer
+except ImportError:
+    QgsProject = None
+    QgsRasterLayer = None
 
-# Importa scripts do plugin
-from coleta_gee import coletar_dados
-from executar_modelo import executar_modelo
+try:
+    from .ui.ui_rna_mpl import Ui_MainWindow
+except ImportError:
+    from ui.ui_rna_mpl import Ui_MainWindow
+
+
+MESSAGE_BOX_STYLE = """
+QMessageBox {
+    background-color: #ffffff;
+}
+
+QMessageBox QLabel {
+    color: #111827;
+    font-size: 10pt;
+    font-family: Segoe UI;
+}
+
+QMessageBox QPushButton {
+    background-color: #4F46E5;
+    color: #ffffff;
+    border-radius: 6px;
+    padding: 6px 14px;
+    min-width: 72px;
+    font-weight: bold;
+}
+
+QMessageBox QPushButton:hover {
+    background-color: #6366F1;
+}
+"""
+
+
+def import_coletar_dados():
+    if __package__:
+        from .coleta_gee import coletar_dados
+    else:
+        from coleta_gee import coletar_dados
+
+    return coletar_dados
+
+
+def import_executar_modelo():
+    if __package__:
+        from .executar_modelo import executar_modelo
+    else:
+        from executar_modelo import executar_modelo
+
+    return executar_modelo
+
+
+def import_ee():
+    import ee
+
+    return ee
+
+
+class ComboItemDelegate(QStyledItemDelegate):
+    def paint(self, painter, option, index):
+        text = str(index.data(Qt.DisplayRole) or "")
+        is_selected = bool(option.state & QStyle.State_Selected)
+        is_hovered = bool(option.state & QStyle.State_MouseOver)
+
+        if is_selected:
+            background = QColor("#31344a")
+            foreground = QColor("#ffffff")
+        elif is_hovered:
+            background = QColor("#E0E7FF")
+            foreground = QColor("#111827")
+        else:
+            background = QColor("#ffffff")
+            foreground = QColor("#111827")
+
+        painter.save()
+        painter.fillRect(option.rect, background)
+        painter.setPen(foreground)
+        text_rect = option.rect.adjusted(8, 0, -8, 0)
+        painter.drawText(
+            text_rect,
+            Qt.AlignVCenter | Qt.AlignLeft,
+            text,
+        )
+        painter.restore()
 
 
 class MainDialog(QMainWindow):
 
-    def __init__(self):
+    def __init__(self, iface=None):
         super().__init__()
 
+        self.iface = iface
+        self.settings = QSettings("RNA_ETP_ETO", "QGISPlugin")
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
@@ -33,6 +141,8 @@ class MainDialog(QMainWindow):
     # CONFIGURAÇÕES INICIAIS
     # =========================================================
     def configure_ui(self):
+
+        self.configure_earth_engine_ui()
 
         # Coleta
         self.ui.spinBoxYearCollect.setValue(2024)
@@ -68,6 +178,135 @@ class MainDialog(QMainWindow):
         self.update_collect_button()
 
         self.log("Plugin iniciado.")
+
+    def style_landsat_combo(self):
+        combo = self.ui.comboBoxLandsat
+        combo.setItemDelegate(ComboItemDelegate(combo))
+
+        combo.setStyleSheet("""
+            QComboBox {
+                background-color: #31344a;
+                color: #ffffff;
+                border: 1px solid #4c566a;
+                border-radius: 6px;
+                padding: 4px;
+            }
+
+            QComboBox QAbstractItemView {
+                background-color: #ffffff;
+                color: #111827;
+                selection-background-color: #31344a;
+                selection-color: #ffffff;
+                outline: 0;
+            }
+        """)
+
+        combo.view().setStyleSheet("""
+            QListView {
+                background-color: #ffffff;
+                color: #111827;
+                border: 1px solid #4c566a;
+                outline: 0;
+            }
+
+            QListView::item {
+                background-color: #ffffff;
+                color: #111827;
+                min-height: 24px;
+                padding: 4px 8px;
+            }
+
+            QListView::item:hover {
+                background-color: #E0E7FF;
+                color: #111827;
+            }
+
+            QListView::item:selected {
+                background-color: #31344a;
+                color: #ffffff;
+            }
+        """)
+
+        for index in range(combo.count()):
+            combo.setItemData(
+                index,
+                QBrush(QColor("#111827")),
+                Qt.ForegroundRole,
+            )
+            combo.setItemData(
+                index,
+                QBrush(QColor("#ffffff")),
+                Qt.BackgroundRole,
+            )
+
+    def configure_earth_engine_ui(self):
+        self.ui.labelEeProject = QLabel(self.ui.groupBox)
+        self.ui.labelEeProject.setText("Projeto Earth Engine:")
+        self.ui.labelEeProject.setObjectName("labelEeProject")
+
+        self.ui.lineEditEeProject = QLineEdit(self.ui.groupBox)
+        self.ui.lineEditEeProject.setObjectName("lineEditEeProject")
+        self.ui.lineEditEeProject.setPlaceholderText(
+            "Ex.: abcd-123456"
+        )
+        self.ui.lineEditEeProject.setText(
+            self.settings.value(
+                "earth_engine/project_id",
+                "",
+                type=str,
+            )
+        )
+
+        self.ui.pushButtonAuthenticateEe = QPushButton(self.ui.groupBox)
+        self.ui.pushButtonAuthenticateEe.setObjectName(
+            "pushButtonAuthenticateEe"
+        )
+        self.ui.pushButtonAuthenticateEe.setText(
+            "Autenticar Earth Engine"
+        )
+
+        self.ui.gridLayout.addWidget(
+            self.ui.labelEeProject,
+            5,
+            0,
+            1,
+            1,
+        )
+        self.ui.gridLayout.addWidget(
+            self.ui.lineEditEeProject,
+            5,
+            1,
+            1,
+            2,
+        )
+        self.ui.gridLayout.addWidget(
+            self.ui.pushButtonAuthenticateEe,
+            5,
+            3,
+            1,
+            1,
+        )
+        self.ui.gridLayout.addWidget(
+            self.ui.pushButtonCollect,
+            6,
+            1,
+            1,
+            2,
+        )
+        self.ui.gridLayout.addWidget(
+            self.ui.progressBarCollect,
+            7,
+            0,
+            1,
+            4,
+        )
+        self.ui.gridLayout.addWidget(
+            self.ui.plainTextEditLog,
+            8,
+            0,
+            1,
+            4,
+        )
 
     def apply_style(self):
         self.setStyleSheet("""
@@ -121,10 +360,51 @@ class MainDialog(QMainWindow):
 
         QComboBox QAbstractItemView {
             background-color: #ffffff;
-            color: #000000;
+            color: #111827;
             selection-background-color: #4F46E5;
             selection-color: #ffffff;
             border: 1px solid #4c566a;
+        }
+
+        QComboBox QAbstractItemView::item {
+            background-color: #ffffff;
+            color: #111827;
+            min-height: 24px;
+            padding: 4px 8px;
+        }
+
+        QComboBox QAbstractItemView::item:hover {
+            background-color: #E0E7FF;
+            color: #111827;
+        }
+
+        QComboBox QAbstractItemView::item:selected {
+            background-color: #4F46E5;
+            color: #ffffff;
+        }
+
+        QListView {
+            background-color: #ffffff;
+            color: #111827;
+            selection-background-color: #4F46E5;
+            selection-color: #ffffff;
+        }
+
+        QListView::item {
+            background-color: #ffffff;
+            color: #111827;
+            min-height: 24px;
+            padding: 4px 8px;
+        }
+
+        QListView::item:hover {
+            background-color: #E0E7FF;
+            color: #111827;
+        }
+
+        QListView::item:selected {
+            background-color: #4F46E5;
+            color: #ffffff;
         }
 
         QPushButton {
@@ -180,7 +460,45 @@ class MainDialog(QMainWindow):
             background: #4F46E5;
         }
 
+        QMessageBox {
+            background-color: #ffffff;
+        }
+
+        QMessageBox QLabel {
+            color: #111827;
+        }
+
+        QMessageBox QPushButton {
+            background-color: #4F46E5;
+            color: #ffffff;
+            border-radius: 6px;
+            padding: 6px 14px;
+            min-width: 72px;
+        }
+
         """)
+
+    def show_message(self, icon, title, message):
+        box = QMessageBox(self)
+        box.setIcon(icon)
+        box.setWindowTitle(title)
+        box.setText(str(message))
+        box.setStyleSheet(MESSAGE_BOX_STYLE)
+        box.exec_()
+
+    def show_success(self, message):
+        self.show_message(
+            QMessageBox.Information,
+            "Sucesso",
+            message,
+        )
+
+    def show_error(self, message):
+        self.show_message(
+            QMessageBox.Critical,
+            "Erro",
+            message,
+        )
 
     # =========================================================
     # CONEXÕES DOS BOTÕES
@@ -197,6 +515,14 @@ class MainDialog(QMainWindow):
 
         self.ui.pushButtonCollect.clicked.connect(
             self.collect_data
+        )
+
+        self.ui.pushButtonAuthenticateEe.clicked.connect(
+            self.authenticate_earth_engine
+        )
+
+        self.ui.lineEditEeProject.editingFinished.connect(
+            self.save_ee_project
         )
 
         self.ui.pushButtonDataFolder.clicked.connect(
@@ -275,6 +601,7 @@ class MainDialog(QMainWindow):
 
         self.ui.comboBoxLandsat.blockSignals(False)
 
+        self.style_landsat_combo()
         self.update_collect_button()
 
     def update_collect_button(self):
@@ -331,6 +658,89 @@ class MainDialog(QMainWindow):
         self.ui.plainTextEditRunLog.appendPlainText(
             str(message)
         )
+
+    def get_ee_project(self):
+        project = self.ui.lineEditEeProject.text().strip()
+
+        if project:
+            return project
+
+        for env_var in [
+            "EARTHENGINE_PROJECT",
+            "GOOGLE_CLOUD_PROJECT",
+            "EE_PROJECT",
+        ]:
+            value = os.environ.get(env_var)
+            if value:
+                value = value.strip()
+                if value:
+                    return value
+
+        return ""
+
+    def save_ee_project(self):
+        project = self.ui.lineEditEeProject.text().strip()
+        self.settings.setValue(
+            "earth_engine/project_id",
+            project,
+        )
+
+    def authenticate_earth_engine(self):
+        try:
+            project = self.get_ee_project()
+
+            if not project:
+                raise ValueError(
+                    "Informe o Project ID do Google Cloud/Earth Engine."
+                )
+
+            self.ui.lineEditEeProject.setText(project)
+            self.save_ee_project()
+
+            self.log("===================================")
+            self.log("Autenticando Earth Engine...")
+            self.log(f"Projeto: {project}")
+
+            QApplication.processEvents()
+
+            ee = import_ee()
+            ee.Authenticate(auth_mode="localhost")
+            ee.Initialize(project=project)
+
+            self.log("Earth Engine autenticado com sucesso.")
+            self.show_success(
+                "Earth Engine autenticado com sucesso."
+            )
+
+        except Exception as e:
+            self.log("ERRO NA AUTENTICACAO:")
+            self.log(str(e))
+            self.show_error(str(e))
+
+    def add_raster_to_qgis_canvas(self, raster_path, layer_name):
+        if self.iface is None:
+            return
+
+        if QgsProject is None or QgsRasterLayer is None:
+            raise RuntimeError(
+                "PyQGIS nao esta disponivel para carregar o raster no QGIS."
+            )
+
+        layer = QgsRasterLayer(
+            raster_path,
+            layer_name,
+        )
+
+        if not layer.isValid():
+            raise RuntimeError(
+                "Raster gerado, mas nao foi possivel carregar no QGIS:\n"
+                f"{raster_path}"
+            )
+
+        QgsProject.instance().addMapLayer(layer)
+
+        self.log_run("Raster adicionado ao QGIS:")
+        self.log_run(raster_path)
 
     # =========================================================
     # SELECIONAR SHAPEFILE
@@ -459,13 +869,24 @@ class MainDialog(QMainWindow):
                 self.ui.comboBoxLandsat.currentText()
             )
 
+            ee_project = self.get_ee_project()
+
+            if ee_project:
+                self.ui.lineEditEeProject.setText(ee_project)
+                self.save_ee_project()
+
             self.log("===================================")
             self.log("Iniciando coleta de dados...")
             self.log(f"Ano: {year}")
             self.log(f"Coleção: {collection}")
             self.log(f"Nuvem máxima: {cloud}%")
 
+            if ee_project:
+                self.log(f"Projeto Earth Engine: {ee_project}")
+
             self.update_collect_progress(5)
+
+            coletar_dados = import_coletar_dados()
 
             coletar_dados(
                 shp_path=shp_path,
@@ -475,11 +896,14 @@ class MainDialog(QMainWindow):
                 cloud=cloud,
                 logger=self.log,
                 progress=self.update_collect_progress,
+                ee_project=ee_project or None,
             )
 
             self.update_collect_progress(100)
 
             self.log("Coleta finalizada com sucesso.")
+            self.show_success("Coleta concluida.")
+            return
 
             QMessageBox.information(
                 self,
@@ -491,6 +915,8 @@ class MainDialog(QMainWindow):
 
             self.log("ERRO:")
             self.log(str(e))
+            self.show_error(str(e))
+            return
 
             QMessageBox.critical(
                 self,
@@ -553,6 +979,8 @@ class MainDialog(QMainWindow):
 
             self.update_run_progress(5)
 
+            executar_modelo = import_executar_modelo()
+
             raster_output = executar_modelo(
                 pasta_ano=year_folder,
                 ano=year,
@@ -566,6 +994,14 @@ class MainDialog(QMainWindow):
             self.log_run("Raster gerado:")
             self.log_run(raster_output)
 
+            self.add_raster_to_qgis_canvas(
+                raster_path=raster_output,
+                layer_name=f"ETP/ETO {year}",
+            )
+
+            self.show_success("Inferencia concluida.")
+            return
+
             QMessageBox.information(
                 self,
                 "Sucesso",
@@ -576,6 +1012,8 @@ class MainDialog(QMainWindow):
 
             self.log_run("ERRO:")
             self.log_run(str(e))
+            self.show_error(str(e))
+            return
 
             QMessageBox.critical(
                 self,
