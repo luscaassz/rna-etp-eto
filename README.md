@@ -159,8 +159,6 @@ Ative o plugin **RNA ETP ETO**.
 
 Apos ativar, abra o plugin pelo menu **Complementos** ou pelo botao criado na barra de ferramentas.
 
-![Placeholder - plugin aberto no QGIS](docs/images/placeholder-tela-principal.png)
-
 ### Opcao 2 - Instalar por ZIP
 
 Crie um arquivo `.zip` contendo uma pasta raiz chamada `rna_etp_eto`:
