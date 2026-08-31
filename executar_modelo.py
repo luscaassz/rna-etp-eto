@@ -223,7 +223,10 @@ def estimar_crs_utm_por_aoi(aoi_path, logger=None):
         raise ValueError("AOI sem CRS definido.")
 
     gdf_4326 = gdf.to_crs("EPSG:4326")
-    geom = gdf_4326.union_all()
+    if hasattr(gdf_4326, "union_all"):
+        geom = gdf_4326.union_all()
+    else:
+        geom = gdf_4326.unary_union
     centroid = geom.centroid
 
     lon = float(centroid.x)
@@ -1265,3 +1268,4 @@ def executar_modelo(
     log_message(logger, "Processamento finalizado.")
 
     return output_raster
+
