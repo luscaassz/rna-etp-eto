@@ -144,7 +144,10 @@ def shapefile_to_ee_geometry(shp_path, logger=None):
 
     gdf = gdf.to_crs(epsg=4326)
 
-    geom = gdf.union_all()
+    if hasattr(gdf, "union_all"):
+        geom = gdf.union_all()
+    else:
+        geom = gdf.unary_union
 
     if geom.is_empty:
         raise ValueError("Geometria vazia.")
@@ -703,3 +706,4 @@ def coletar_dados(
     log_message(logger, "Coleta concluída.")
 
     set_progress(progress, 100)
+

@@ -1,120 +1,214 @@
-# QGISPlugin_TesteApp — Estimativa de ET com RNA
+﻿# RNA ETP ETO - Plugin QGIS
 
-Aplicação simples em **Python + PyQt5** para testar a coleta de dados via Google Earth Engine e a geração de um raster de evapotranspiração anual (`ET`) usando uma Rede Neural Artificial.
+Plugin PyQGIS para coletar dados Landsat e MapBiomas via Google Earth Engine e gerar um raster anual de evapotranspiracao estimada com uma Rede Neural Artificial.
 
-Para rodar:
-
-```bash
-python test_app.py
-```
-
----
-
-## 1. O que este projeto faz?
-
-A ferramenta possui duas etapas:
-
-1. **Coleta**: baixa dados Landsat e MapBiomas para uma área escolhida pelo usuário.
-2. **Execução**: aplica o modelo RNA e gera um raster GeoTIFF com a estimativa de evapotranspiração anual.
-
-A saída principal é um arquivo como:
+O resultado principal é um GeoTIFF como:
 
 ```text
 2024/Resultado/etp_eto_2024.tif
 ```
 
-O modelo está prevendo a variável **ET anual estimada**, em `mm/ano`.
+Cada pixel do raster representa uma estimativa anual de ET/ETP/ETo em `mm/ano`, conforme o dominio do modelo treinado.
+
+> [!NOTE]
+> Este plugin exige conta Google Earth Engine, um Project ID valido do Google Cloud/Earth Engine e dependencias Python externas instaladas no ambiente Python usado pelo QGIS.
+
 
 ---
 
-## 2. Estrutura da pasta
+## Funcionalidades
+
+O plugin possui duas etapas principais:
+
+1. **Coleta**: baixa dados Landsat e MapBiomas para uma area de interesse definida por shapefile.
+2. **Execucao**: aplica o modelo RNA e gera um raster GeoTIFF com a estimativa anual de evapotranspiracao.
+
+Ao final da execucao, o raster gerado e adicionado automaticamente ao canvas do QGIS.
+
+---
+
+## Estrutura do Plugin
+
+Estrutura esperada para a versao limpa do plugin:
 
 ```text
-QGISPlugin_TesteApp/
-├── test_app.py                  # Arquivo principal para abrir a interface
-├── run_app.bat                  # Atalho opcional para Windows
-├── main_dialog.py               # Controle da interface
-├── coleta_gee.py                # Coleta Landsat/MapBiomas no Earth Engine
-├── executar_modelo.py           # Executa a RNA e gera o raster final
-├── requirements.txt             # Lista de dependências Python
-│
-├── ui/
-│   ├── __init__.py
-│   ├── ui_rna_mpl.py            # Interface convertida para Python
-│   └── rna_mpl.ui               # Interface original do Qt Designer
-│
+rna_etp_eto/
+├── metadata.txt
+├── __init__.py
+├── plugin.py
+├── main_dialog.py
+├── coleta_gee.py
+├── executar_modelo.py
+├── requirements.txt
+├── README.md
+├── LICENSE
 ├── modelo/
-│   ├── modelo_etp.h5            # Modelo RNA treinado
-│   ├── scaler_X.pkl             # Normalizador das entradas
-│   ├── scaler_y.pkl             # Normalizador da saída
-│   └── feature_columns.json     # Ordem correta das 25 features
-│
-├── shapes/
-|   └── sorocaba                 # Shape de exemplo
-|       ├── sorocaba.cpg            
-│       ├── sorocaba.dbf             
-│       ├── sorocaba.prj
-|       ├── sorocaba.qmd
-|       ├── sorocaba.shp              
-│       └── sorocaba.shx 
-|
-└── docs/
-    └── images/                  # Imagens do README
+│   ├── modelo_etp.h5
+│   ├── scaler_X.pkl
+│   ├── scaler_y.pkl
+│   └── feature_columns.json
+└── ui/
+    ├── __init__.py
+    ├── ui_rna_mpl.py
+    └── rna_mpl.ui
 ```
 
 ---
 
-## 3. Instalação recomendada
+## Requisitos
 
-No Windows, recomenda-se usar Conda para evitar problemas com bibliotecas geoespaciais.
+- QGIS 3.28 ou superior.
+- Python do QGIS com as dependencias externas instaladas.
+- Conta Google Earth Engine ativa.
+- Project ID valido do Google Cloud/Earth Engine.
 
-```bash
-conda create -n rna_qgis python=3.11 -y
-conda activate rna_qgis
+Dependencias Python usadas pelo plugin:
 
-conda install -c conda-forge geopandas rasterio shapely pyproj fiona gdal numpy pandas -y
-
-pip install earthengine-api geemap PyQt5 tensorflow scikit-learn joblib
+```text
+earthengine-api
+geemap
+tensorflow
+scikit-learn
+joblib
+numpy
+pandas
+geopandas
+rasterio
+shapely
+pyproj
+fiona
 ```
 
-Teste se as dependências foram instaladas:
-
-```bash
-python -c "import ee, geemap, geopandas, rasterio, tensorflow, sklearn, joblib, PyQt5; print('Tudo OK')"
-```
+> [!IMPORTANT]
+> Instale as dependencias no Python do QGIS.
 
 ---
 
-## 4. Autenticação do Google Earth Engine
+## Instalacao das Dependencias no QGIS
 
-Na primeira execução, talvez seja necessário autenticar:
+No Windows, abra o **OSGeo4W Shell** instalado junto com o QGIS.
 
-```bash
-earthengine authenticate
+Instale as dependencias principais:
+
+```bat
+python -m pip install earthengine-api geemap tensorflow scikit-learn joblib
 ```
 
-O plugin nao usa mais um projeto fixo do Earth Engine. Cada usuario deve
-autenticar com a propria conta.
+Instale as dependencias geoespaciais, se ainda nao estiverem disponiveis no Python do QGIS:
 
-Dentro do plugin PyQGIS, use a aba **Coleta**:
+```bat
+python -m pip install rasterio geopandas fiona shapely pyproj
+```
 
-1. Informe o **Project ID** do Google Cloud/Earth Engine.
+Evite instalar `gdal` via `pip` dentro do QGIS. O QGIS ja vem com uma instalacao propria do GDAL.
+
+Teste os imports no Terminal Python do QGIS:
+
+```python
+import ee
+import geemap
+import tensorflow
+import sklearn
+import joblib
+import rasterio
+import geopandas
+```
+
+### Plugin Google Earth Engine do QGIS
+
+Opcionalmente, instale tambem o plugin **Google Earth Engine** pelo proprio Gerenciador de Complementos do QGIS.
+
+Ele nao substitui todas as dependencias deste plugin, mas ajuda o usuario a entender e configurar a autenticacao do Earth Engine, inclusive o uso do Project ID.
+
+O pacote `geemap` continua sendo uma dependencia Python deste plugin e deve ser instalado via `pip` no ambiente Python do QGIS:
+
+```bat
+python -m pip install geemap
+```
+
+Depois de instalar as dependencias, confirme no Terminal Python do QGIS:
+
+```python
+import ee
+import geemap
+```
+
+Se `import geemap` falhar, a coleta deste plugin tambem falhara.
+
+---
+
+## Instalacao do Plugin
+
+### Opcao 1 - Copiar para a pasta de plugins
+
+Copie a pasta do plugin para:
+
+```text
+C:\Users\SEU_USUARIO\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\rna_etp_eto
+```
+
+Se a pasta `python/plugins` nao existir dentro do perfil, crie manualmente.
+
+No QGIS:
+
+```text
+Complementos > Gerenciar e Instalar Complementos
+```
+
+Ative o plugin **RNA ETP ETO**.
+
+Apos ativar, abra o plugin pelo menu **Complementos** ou pelo botao criado na barra de ferramentas.
+
+### Opcao 2 - Instalar por ZIP
+
+Crie um arquivo `.zip` contendo uma pasta raiz chamada `rna_etp_eto`:
+
+```text
+rna_etp_eto.zip
+└── rna_etp_eto/
+    ├── metadata.txt
+    ├── __init__.py
+    ├── plugin.py
+    └── ...
+```
+
+No QGIS:
+
+```text
+Complementos > Gerenciar e Instalar Complementos > Instalar a partir do ZIP
+```
+
+Selecione o arquivo `rna_etp_eto.zip`.
+
+---
+
+## Autenticacao do Google Earth Engine
+
+O plugin nao usa um projeto fixo do Earth Engine. Cada usuario deve autenticar com a propria conta e informar o proprio Project ID.
+
+Na aba **Coleta**:
+
+1. Informe o **Projeto Earth Engine** no campo correspondente.
 2. Clique em **Autenticar Earth Engine**.
-3. Faça login no navegador quando solicitado.
-4. Volte ao QGIS e execute a coleta.
+3. Faca login no navegador quando solicitado.
+4. Volte ao QGIS.
+5. Execute a coleta.
 
 O Project ID fica salvo nas configuracoes do QGIS para os proximos usos.
 
-Se a conta exigir um projeto Google Cloud/Earth Engine especifico, defina uma
-variavel de ambiente antes de abrir o QGIS:
+Exemplo de Project ID:
 
-```bat
-setx EARTHENGINE_PROJECT seu-projeto-earth-engine
+```text
+abcd-123456
 ```
 
-Depois feche e abra o QGIS novamente.
+Se preferir configurar por variavel de ambiente, use uma das opcoes abaixo antes de abrir o QGIS:
 
-Tambem sao aceitas estas variaveis:
+```bat
+setx EARTHENGINE_PROJECT seu-project-id
+```
+
+Tambem sao aceitas:
 
 ```text
 EARTHENGINE_PROJECT
@@ -124,60 +218,33 @@ EE_PROJECT
 
 ---
 
-## 5. Como rodar
+## Como Usar
 
-Entre na pasta do projeto limpo:
+### 1. Aba Coleta
 
-```bash
-cd caminho/para/QGISPlugin
-```
+Na aba **Coleta**, informe:
 
-Ative o ambiente:
+- shapefile da area de interesse;
+- ano;
+- colecao Landsat;
+- porcentagem maxima de nuvem;
+- pasta de saida;
+- Project ID do Earth Engine.
 
-```bash
-conda activate rna_qgis
-```
+![aba Coleta](docs/images/01-aba-coleta.png)
 
-Rode:
+O shapefile deve representar uma area/poligono. Evite usar shapefiles de linhas ou pontos.
 
-```bash
-python test_app.py
-```
-
-No Windows, também é possível abrir pelo arquivo:
+Arquivos auxiliares esperados:
 
 ```text
-run_app.bat
+area.shp
+area.shx
+area.dbf
+area.prj
 ```
 
----
-
-## 6. Como usar a interface
-
-## 6.1. Aba Coleta
-
-Na aba **Coleta**, selecione:
-
-- o shapefile da área de interesse;
-- o ano;
-- a coleção Landsat;
-- a porcentagem máxima de nuvem;
-- a pasta de saída.
-
-![Placeholder da aba Coleta](docs/images/01-aba-coleta.png)
-
-O shapefile deve ser uma área/polígono. Evite usar shapefile de ruas, linhas ou pontos.
-
-Exemplo de arquivos necessários do shapefile:
-
-```text
-sorocaba.shp
-sorocaba.shx
-sorocaba.dbf
-sorocaba.prj
-```
-
-Depois da coleta, a pasta de saída ficará assim:
+Depois da coleta, a pasta de saida ficara assim:
 
 ```text
 pasta_saida/
@@ -191,59 +258,61 @@ pasta_saida/
         └── mapbiomas_2024.tif
 ```
 
----
+### 2. Aba Execucao
 
-## 6.2. O que significa “nuvem máxima”?
-
-A porcentagem de nuvem é um filtro das imagens Landsat.
+Na aba **Execucao**, selecione a pasta raiz onde os dados foram salvos.
 
 Exemplo:
 
 ```text
-Nuvem máxima = 30%
+C:\dados\projeto_et
 ```
 
-significa que o programa usará apenas cenas Landsat com menos de 30% de cobertura de nuvem.
+Não selecione diretamente a pasta `2024`. Selecione a pasta que contem a pasta do ano.
 
-Valores recomendados:
+Depois clique em **RODAR MODELO**.
 
-| Valor | Indicação |
-|---|---|
-| 10% | Mais rigoroso, pode encontrar poucas imagens. |
-| 20% | Boa qualidade, mas ainda restritivo. |
-| 30% | Padrão recomendado. |
-| 40% | Mais flexível. |
-| 50% ou mais | Usar se não encontrar imagens suficientes. |
+![aba Execucao preenchida](docs/images/02-aba-execucao.png)
 
----
-
-## 6.3. Aba Execução
-
-Depois da coleta, vá para a aba **Execução**.
-
-Selecione a pasta raiz onde os dados foram salvos, por exemplo:
-
-```text
-caminho/para/QGISPlugin/shapes/sorocaba
-```
-
-Não selecione diretamente a pasta `2024`; selecione a pasta que contém a pasta `2024`.
-
-![Placeholder da aba Execução](docs/images/02-aba-execucao.png)
-
-Clique em **Rodar Modelo**.
-
-O resultado será salvo em:
+O resultado sera salvo em:
 
 ```text
 2024/Resultado/etp_eto_2024.tif
 ```
 
+O raster tambem sera adicionado automaticamente ao canvas do QGIS.
+
+![raster carregado no canvas do QGIS](docs/images/03-resultado-qgis.jpeg)
+
 ---
 
-## 7. O que o modelo usa como entrada?
+## O Que Significa Nuvem Maxima?
 
-O modelo usa 25 variáveis por pixel:
+A porcentagem de nuvem e um filtro aplicado nas imagens Landsat.
+
+Exemplo:
+
+```text
+Nuvem maxima = 30%
+```
+
+significa que o plugin usara apenas cenas Landsat com menos de 30% de cobertura de nuvem.
+
+Valores recomendados:
+
+| Valor | Indicacao |
+|---|---|
+| 10% | Mais rigoroso; pode encontrar poucas imagens. |
+| 20% | Boa qualidade, mas ainda restritivo. |
+| 30% | Valor padrao recomendado. |
+| 40% | Mais flexivel. |
+| 50% ou mais | Usar se nao encontrar imagens suficientes. |
+
+---
+
+## Entradas do Modelo
+
+O modelo usa 25 variaveis por pixel:
 
 ```text
 b2, b3, b4, b5, b6, b7,
@@ -253,19 +322,19 @@ uso_20.0, uso_21.0, uso_24.0, uso_25.0, uso_29.0,
 uso_33.0, uso_39.0, uso_41.0, uso_46.0, uso_48.0
 ```
 
-A ordem dessas variáveis está em:
+A ordem das variaveis esta em:
 
 ```text
 modelo/feature_columns.json
 ```
 
-Não altere esse arquivo sem retreinar ou validar o modelo.
+Nao altere esse arquivo sem retreinar ou validar o modelo.
 
 ---
 
-## 8. O que o raster final significa?
+## Saida Gerada
 
-Cada pixel do raster final representa uma estimativa de **evapotranspiração anual** em `mm/ano`.
+Cada pixel do raster final representa uma estimativa anual de evapotranspiracao em `mm/ano`.
 
 Exemplo:
 
@@ -281,76 +350,80 @@ ET anual estimada naquele local = 850 mm/ano
 
 ---
 
-## 9. Visualização no QGIS
+## Visualizacao no QGIS
 
 Para visualizar melhor o raster final:
 
-1. Abra o `.tif` no QGIS.
-2. Clique com botão direito na camada.
-3. Vá em **Propriedades > Simbologia**.
+1. Clique com o botao direito na camada.
+2. Abra **Propriedades**.
+3. Va em **Simbologia**.
 4. Escolha **Banda simples falsa-cor**.
-5. Clique em carregar valores mínimo/máximo.
+5. Carregue os valores minimo/maximo.
 6. Escolha uma rampa de cor.
 
-![Placeholder do resultado no QGIS](docs/images/03-resultado-qgis.jpeg)
-
-Interpretação visual:
+Interpretacao visual:
 
 ```text
-valores menores → menor ET
-valores maiores → maior ET
+valores menores -> menor ET
+valores maiores -> maior ET
 ```
 
 ---
 
-## 10. Problemas comuns
+## Problemas Comuns
 
-## Erro: `No module named PyQt5`
+### O plugin nao aparece no QGIS
 
-Instale:
+Verifique se a pasta foi copiada para o perfil correto:
 
-```bash
-pip install PyQt5
+```text
+profiles/default/python/plugins/rna_etp_eto
 ```
 
-ou ative o ambiente correto:
+Tambem confira se existem `metadata.txt`, `__init__.py` e `plugin.py` dentro da pasta do plugin.
 
-```bash
-conda activate rna_qgis
+### Erro: `No module named joblib`, `rasterio`, `tensorflow` ou `ee`
+
+A dependencia nao esta instalada no Python do QGIS.
+
+Instale pelo OSGeo4W Shell:
+
+```bat
+python -m pip install earthengine-api geemap tensorflow scikit-learn joblib rasterio geopandas fiona shapely pyproj
 ```
 
-## Erro no Earth Engine
+### Erro no Earth Engine: `no project found`
 
-Tente autenticar novamente:
+Informe o Project ID na aba **Coleta** e clique em **Autenticar Earth Engine**.
 
-```bash
-earthengine authenticate --revoke
-earthengine authenticate
-```
+### Erro: `Project not found or deleted`
 
-## Erro: nenhuma imagem Landsat encontrada
+O Project ID informado nao existe ou sua conta nao tem permissao para usa-lo.
+
+Use o ID real do projeto Google Cloud/Earth Engine, nao apenas o nome visual do projeto.
+
+### Erro: nenhuma imagem Landsat encontrada
 
 Aumente o limite de nuvem, por exemplo de `20%` para `40%`.
 
-## Raster com valores muito estranhos
+### Raster com valores muito estranhos
 
-Possíveis causas:
+Possiveis causas:
 
-- raster Landsat antigo gerado antes da correção de escala;
-- precipitação fallback pouco representativa;
-- área muito diferente da região usada no treinamento;
-- shapefile inválido ou com CRS incorreto.
+- raster Landsat antigo, gerado antes da correcao de escala;
+- precipitacao fallback pouco representativa;
+- area muito diferente da regiao usada no treinamento;
+- shapefile invalido ou com CRS incorreto.
 
-Refaça a coleta usando o `coleta_gee.py` atual.
-
----
-
-## 11. Observações importantes
-
-- O modelo atual usa coordenadas `X` e `Y`; por isso, ele pode funcionar melhor em regiões parecidas com a região usada no treinamento.
-- A precipitação ainda é usada como valor anual de referência caso não seja informada manualmente.
-- O pós-processamento remove valores fisicamente impossíveis, como ET negativa.
-- Para resultados científicos mais robustos, recomenda-se usar precipitação real e validar a saída com dados independentes.
+Refaca a coleta com a versao atual do plugin.
 
 ---
+
+## Observacoes Importantes
+
+- O modelo atual usa coordenadas `X` e `Y`; por isso, pode funcionar melhor em regioes parecidas com a regiao usada no treinamento.
+- A precipitacao ainda e usada como valor anual de referencia quando nao e informada manualmente.
+- O pos-processamento remove valores fisicamente impossiveis, como ET negativa.
+
+
 

@@ -1,7 +1,10 @@
-__pycache__/
+﻿__pycache__/
 *.pyc
 *.pyo
-.env
-.venv
-.DS_Store
+*.aux.xml
 outputs/
+shapes/
+teste/
+.venv/
+.env
+.vscode/
